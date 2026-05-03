@@ -1,0 +1,137 @@
+services:
+  load_balancer:
+    container_name: loadbalancer
+    image: traefik:v3.6
+    restart: unless-stopped
+    tty: true
+    command:
+      # EntryPoints
+      - --entrypoints.http.address=:80
+      - --entrypoints.ping.address=:8081
+      - --entrypoints.metrics.address=:8082
+      - --entrypoints.traefik.address=:8083
+
+      # Providers 
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      
+      # API & Dashboard 
+      - --api.dashboard=true
+      - --api.insecure=true
+      
+      # Ping endpoint
+      - --ping=true
+      - --ping.entrypoint=ping
+      
+      # Observability 
+      - --log.level=INFO
+      - --accesslog=true
+      - --metrics.prometheus=true
+      - --metrics.prometheus.entrypoint=metrics
+      - --metrics.prometheus.addServicesLabels=true
+
+      # Timeouts
+      - --serversTransport.forwardingTimeouts.dialTimeout=10s
+      - --serversTransport.forwardingTimeouts.responseHeaderTimeout=10s
+      
+      # Load Balancing
+      - --providers.docker.defaultRule=Host(`localhost`)
+    labels:
+      - traefik.enable=true
+      
+      # Dashboard
+      - traefik.http.routers.dashboard.rule=Host(`localhost`)
+      - traefik.http.routers.dashboard.entrypoints=traefik
+      - traefik.http.routers.dashboard.service=api@internal
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO- http://127.0.0.1:8081/ping >/dev/null 2>&1 || exit 1" ]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    depends_on:
+      - api
+    links:
+      - api
+    ports:
+      - "8080:80"
+      - "127.0.0.1:8081:8081"
+      - "127.0.0.1:8082:8082"
+      - "127.0.0.1:8083:8083"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - todo-service-public
+      - todo-service-internal
+    logging:
+      driver: "json-file"
+      options:
+        max-file: "2"
+        max-size: "1m"
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '1'
+          memory: 512M
+
+  api:
+    image: todo-api:latest
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    env_file:
+      - .env
+    labels:
+      - traefik.enable=true
+
+      # Router configuration
+      - traefik.http.routers.api_service_read.entrypoints=http
+      - traefik.http.routers.api_service_read.rule=PathPrefix(`/todo`)
+
+      # Service configuration
+      - traefik.http.services.api_service_read.loadbalancer.server.port=8080
+      - traefik.http.services.api_service_read.loadbalancer.passhostheader=true
+      - traefik.http.services.api_service_read.loadbalancer.healthcheck.path=/health?source=traefik
+      - traefik.http.services.api_service_read.loadbalancer.healthcheck.interval=15s
+      - traefik.http.services.api_service_read.loadbalancer.healthcheck.timeout=3s
+      - traefik.http.services.api_service_read.loadbalancer.healthcheck.scheme=http
+
+      # Middlewares definitions
+      - traefik.http.middlewares.strip-prefix.stripprefix.prefixes=/todo
+      - traefik.http.middlewares.compress.compress=true
+      - traefik.http.middlewares.rate-limit.ratelimit.average=100000
+      - traefik.http.middlewares.rate-limit.ratelimit.burst=5000
+      - traefik.http.middlewares.rate-limit.ratelimit.period=1s
+      - traefik.http.middlewares.circuit-breaker.circuitbreaker.expression=LatencyAtQuantileMS(95.0) > 5000
+
+      # Apply middlewares
+      - traefik.http.routers.api_service_read.middlewares=strip-prefix,compress,rate-limit,circuit-breaker
+    networks:
+      - todo-service-internal
+    logging:
+      driver: "json-file"
+      options:
+        max-file: "2"
+        max-size: "1m"
+    deploy:
+      replicas: 1
+      mode: replicated
+      resources:
+        limits:
+          cpus: '1'
+          memory: '512M'
+          pids: 100
+        reservations:
+          cpus: '1'
+          memory: '512M'
+
+networks:
+  todo-service-public:
+    driver: bridge
+  todo-service-internal:
+    driver: bridge
+    internal: true

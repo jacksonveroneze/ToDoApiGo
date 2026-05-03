@@ -39,12 +39,13 @@ func main() {
 	mux := http.NewServeMux()
 	taskHandler.RegisterRouters(mux)
 
+	mux.HandleFunc("/health", HealthCheckHandler)
 	mux.Handle("/metrics", otelApp.MetricsHandler())
 
 	add := os.Getenv("ADDR")
 
 	if add == "" {
-		add = ":8000"
+		add = ":8080"
 	}
 
 	server := &http.Server{
@@ -73,5 +74,10 @@ func main() {
 	}
 
 	log.Println("server stopped")
+}
 
+func HealthCheckHandler(w http.ResponseWriter, r *http.Request) {
+	log.Println("request received /health")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("OK"))
 }
