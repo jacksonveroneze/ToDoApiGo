@@ -60,8 +60,24 @@ func (s *TaskService) List(ctx context.Context) ([]model.Task, error) {
 
 }
 
-func (s *TaskService) GetByID(ctx context.Context, id int) (*model.Task, error) {
-	return nil, nil
+func (s *TaskService) GetById(ctx context.Context, id int) (*model.Task, error) {
+	task, err := s.repo.GetById(ctx, id)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to get task by id: %w", err)
+	}
+
+	return task, nil
+}
+
+func (s *TaskService) Delete(ctx context.Context, id int) error {
+	if err := s.repo.Delete(ctx, id); err != nil {
+		return fmt.Errorf("failed to delete task: %w", err)
+	}
+
+	s.publishEvent("deleted", id)
+
+	return nil
 }
 
 func (s *TaskService) IsNotFound(err error) bool {
