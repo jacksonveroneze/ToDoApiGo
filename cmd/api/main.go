@@ -67,14 +67,20 @@ func main() {
 
 	router.GET("/metrics", gin.WrapH(otelApp.MetricsHandler()))
 
+	add := os.Getenv("ADDR")
+
+	if add == "" {
+		add = ":7000"
+	}
+
 	server := &http.Server{
-		Addr:              ":7000",
+		Addr:              add,
 		Handler:           router,
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
 	go func() {
-		log.Println("server running on http://localhost:7000")
+		log.Println("server running on http://localhost" + add)
 
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatal(err)

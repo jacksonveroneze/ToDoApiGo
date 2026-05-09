@@ -126,8 +126,8 @@ services:
           memory: '512M'
           pids: 100
         reservations:
-          cpus: '1'
-          memory: '512M'
+          cpus: '0.25'
+          memory: '256M'
 
 networks:
   todo-service-public:
