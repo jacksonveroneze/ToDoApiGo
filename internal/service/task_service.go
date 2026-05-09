@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"strings"
 	"time"
-	"todo-api/internal/dto"
 	"todo-api/internal/model"
 	"todo-api/internal/repository"
 	"todo-api/internal/worker"
@@ -24,9 +23,9 @@ func NewTaskService(repo *repository.TaskRepository, events chan<- worker.AuditE
 	}
 }
 
-func (s *TaskService) Create(ctx context.Context, req dto.CreateTaskRequest) (*model.Task, error) {
-	title := strings.TrimSpace(req.Title)
-	description := strings.TrimSpace(req.Description)
+func (s *TaskService) Create(ctx context.Context, in CreateTaskInput) (*model.Task, error) {
+	title := strings.TrimSpace(in.Title)
+	description := strings.TrimSpace(in.Description)
 
 	if title == "" || description == "" {
 		return nil, fmt.Errorf("title or description are required")
