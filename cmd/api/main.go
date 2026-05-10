@@ -50,7 +50,7 @@ func main() {
 
 	appNewrelic, err := newrelic.NewApplication(
 		newrelic.ConfigAppName("Todo ApI"),
-		newrelic.ConfigLicense("f726ae39af11d7d728e2ede8ea10e26f87f0NRAL"),
+		newrelic.ConfigLicense(""),
 		newrelic.ConfigAppLogForwardingEnabled(true),
 	)
 
