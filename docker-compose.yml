@@ -111,6 +111,7 @@ services:
       # Apply middlewares
       - traefik.http.routers.api_service.middlewares=strip-prefix,compress,rate-limit,circuit-breaker
     networks:
+      - todo-service-public
       - todo-service-internal
     logging:
       driver: "json-file"

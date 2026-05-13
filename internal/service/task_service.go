@@ -12,11 +12,11 @@ import (
 )
 
 type TaskService struct {
-	repo   *repository.TaskRepository
+	repo   repository.TaskRepository
 	events chan<- worker.AuditEvent
 }
 
-func NewTaskService(repo *repository.TaskRepository, events chan<- worker.AuditEvent) *TaskService {
+func NewTaskService(repo repository.TaskRepository, events chan<- worker.AuditEvent) *TaskService {
 	return &TaskService{
 		repo:   repo,
 		events: events,
